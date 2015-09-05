@@ -1,25 +1,25 @@
-# This is a template for a Ruby scraper on morph.io (https://morph.io)
-# including some code snippets below that you should find helpful
+require 'scraperwiki'
+require 'mechanize'
 
-# require 'scraperwiki'
-# require 'mechanize'
-#
-# agent = Mechanize.new
-#
+url = "http://www.assemblee.bi/spip.php?page=imprimer&id_article=418"
+year = '2015'
+
 # # Read in a page
-# page = agent.get("http://foo.com")
-#
-# # Find somehing on the page using css selectors
-# p page.at('div.content')
-#
-# # Write out to the sqlite database using scraperwiki library
-# ScraperWiki.save_sqlite(["name"], {"name" => "susan", "occupation" => "software developer"})
-#
-# # An arbitrary query against the database
-# ScraperWiki.select("* from data where 'name'='peter'")
+agent = Mechanize.new
+page = agent.get(url)
 
-# You don't have to do things with the Mechanize or ScraperWiki libraries.
-# You can use whatever gems you want: https://morph.io/documentation/ruby
-# All that matters is that your final data is written to an SQLite database
-# called "data.sqlite" in the current working directory which has at least a table
-# called "data".
+table = page.at('div.Sect table')
+table.xpath('./*/tr[position()>1]').each  do |row|
+  row_data = {
+      :id => year+'-'+row.css('td')[0].text.strip,
+      # first name and surname is sometimes two <p>s, sometimes not
+      :name =>  row.xpath('./td[position()=2]/p/span').collect{|part| part.text.gsub('Hon.', '').strip}.join(' '),
+      :national_identity =>row.css('td')[2].text.strip,
+      :gender => { 'M'=>'Male', 'F'=>'Female' }[row.css('td')[3].text.strip],
+      :party => row.css('td')[4].text.strip,
+      :area => row.css('td')[5].text.strip,
+      :term => year
+  }
+  puts row_data
+  ScraperWiki.save_sqlite([:id],row_data )
+end
